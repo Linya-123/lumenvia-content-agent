@@ -198,10 +198,43 @@ class StubClient implements LLMClient {
 
 let _client: LLMClient | null = null;
 
+/**
+ * 运行时开关：null 表示跟随环境变量 LLM_ENABLED。
+ * 顶栏按钮切换后写这里，不影响 process.env。
+ */
+let _runtimeOn: boolean | null = null;
+
+/** 当前是否走真实模型 */
+export function llmRuntimeOn(): boolean {
+  if (_runtimeOn !== null) return _runtimeOn;
+  return (process.env.LLM_ENABLED ?? 'false').toLowerCase() === 'true';
+}
+
+/** 是否具备切到在线的前提（base + key） */
+export function llmConfigured(): boolean {
+  return Boolean(process.env.LLM_BASE_URL && process.env.LLM_API_KEY);
+}
+
+/**
+ * 运行时切换。切到在线前先检查凭据是否齐备，
+ * 缺 key 就明确拒绝，而不是让人等到跑到一半才报错。
+ */
+export function setLlmRuntime(on: boolean): { ok: boolean; message?: string } {
+  if (on && !llmConfigured()) {
+    return { ok: false, message: '未配置 LLM_API_KEY，无法切到在线' };
+  }
+  _runtimeOn = on;
+  _client = null; // 丢掉缓存的客户端，下次调用按新模式重建
+  return { ok: true };
+}
+
+export function llmModel(): string {
+  return process.env.LLM_MODEL ?? DEFAULT_MODEL;
+}
+
 export function getLLM(): LLMClient {
   if (_client) return _client;
-  const enabled = (process.env.LLM_ENABLED ?? 'false').toLowerCase() === 'true';
-  if (enabled) {
+  if (llmRuntimeOn()) {
     try {
       _client = new OpenAICompatibleClient();
     } catch (e) {

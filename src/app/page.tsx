@@ -94,6 +94,10 @@ export default function Page() {
   const [activeLocale, setActiveLocale] = useState('en');
   const [kb, setKb] = useState<{ stats: Record<string, number>; groups: Record<string, Array<{ title: string; source: string }>> } | null>(null);
   const [llmMode, setLlmMode] = useState<string>('');
+  /** 是否配了 key：没配就不允许切到在线 */
+  const [llmConfigured, setLlmConfigured] = useState(false);
+  const [llmBusy, setLlmBusy] = useState(false);
+  const [llmNote, setLlmNote] = useState('');
   const [kbTotal, setKbTotal] = useState(0);
   /** 是否开启了会话鉴权：开了才显示「退出登录」 */
   const [authOn, setAuthOn] = useState(false);
@@ -137,6 +141,7 @@ export default function Page() {
       .then((r) => r.json())
       .then((d) => {
         setLlmMode(d.llm);
+        if (typeof d.llmConfigured === 'boolean') setLlmConfigured(d.llmConfigured);
         if (typeof d.kbEntries === 'number') setKbTotal(d.kbEntries);
         if (typeof d.authEnabled === 'boolean') setAuthOn(d.authEnabled);
       })
@@ -452,6 +457,36 @@ export default function Page() {
     window.location.replace('/login');
   }
 
+  /**
+   * 切换 LLM 在线 / 离线。
+   * 默认离线（stub，秒出、不烧额度）；点一下切真实模型，用于现场演示。
+   * 状态存在服务端进程内存里，不写环境变量、不改代码。
+   */
+  async function toggleLlm() {
+    if (llmBusy) return;
+    const next = llmMode !== 'live';
+    setLlmBusy(true);
+    setLlmNote('');
+    try {
+      const r = await fetch('/api/llm', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      });
+      const d = await r.json().catch(() => ({} as Record<string, unknown>));
+      if (!r.ok || d.ok === false) {
+        setLlmNote(String(d.message ?? '切换失败'));
+        setTimeout(() => setLlmNote(''), 4000);
+      } else {
+        setLlmMode(String(d.mode ?? (next ? 'live' : 'stub')));
+      }
+    } catch {
+      setLlmNote('切换失败：连不上服务');
+      setTimeout(() => setLlmNote(''), 4000);
+    }
+    setLlmBusy(false);
+  }
+
   const passedCount = readiness
     ? [readiness.factDensity >= 60, readiness.citationCoverage >= 70, readiness.entityConsistency >= 80, readiness.crawlability >= 75].filter(Boolean).length
     : 0;
@@ -461,9 +496,24 @@ export default function Page() {
       <header>
         <div className="logo"><div className="logo-mark">L</div> Lumenvia Content Agent</div>
         <div className="tagline">跨语言内容生产 · AI 搜索可见性</div>
+        <button
+          className={`llm-toggle${llmMode === 'live' ? ' on' : ''}`}
+          onClick={toggleLlm}
+          disabled={llmBusy}
+          title={
+            !llmConfigured
+              ? '未配置 LLM_API_KEY，只能离线运行'
+              : llmMode === 'live'
+                ? '当前真实调用模型，点击切回离线（stub，秒出且不消耗额度）'
+                : '当前离线（stub），点击切到在线，真实调用模型'
+          }
+        >
+          <span className={`status-dot${llmMode === 'live' ? '' : ' off'}`} />
+          {llmBusy ? '切换中…' : llmMode === 'live' ? 'LLM 在线' : 'LLM 离线'}
+        </button>
+        {llmNote ? <span className="llm-note">{llmNote}</span> : null}
         <div className="header-right">
           <span><span className="status-dot" />知识库 {kbTotal} 条 · 代码内置</span>
-          <span>{llmMode === 'live' ? 'LLM 在线' : 'LLM 离线模式'}</span>
           {authOn ? <button className="logout-btn" onClick={logout} title="退出登录">退出</button> : null}
         </div>
       </header>

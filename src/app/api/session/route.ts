@@ -1,5 +1,5 @@
 import { latestJob, jobCount } from '@/lib/store';
-import { llmMode } from '@/lib/llm';
+import { llmConfigured, llmMode, llmRuntimeOn } from '@/lib/llm';
 import { MARKETS } from '@/lib/types';
 import { KB_ENTRIES } from '@/lib/kb';
 import { authEnabled, sessionDays } from '@/lib/auth';
@@ -12,6 +12,8 @@ export async function GET() {
     ok: true,
     storage: 'memory',
     llm: llmMode(),
+    llmConfigured: llmConfigured(),
+    llmEnabled: llmRuntimeOn(),
     authEnabled: authEnabled(),
     sessionDays: sessionDays(),
     kbEntries: KB_ENTRIES.length,
