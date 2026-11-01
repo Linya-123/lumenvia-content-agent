@@ -1,45 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SESSION_COOKIE, authEnabled, verifySessionToken } from '@/lib/auth';
 
 /**
- * 全站 HTTP Basic Auth
+ * 会话鉴权（Cookie）
  * ------------------------------------------------------------
  * 评审账号通过环境变量配置：AUTH_USER / AUTH_PASSWORD
- * 两者任一未设置时鉴权自动关闭（本地开发零摩擦）。
+ * 任一未设置时鉴权自动关闭（本地开发零摩擦）。
  *
- * 选 Basic Auth 而非登录页的理由：
- *   1. 浏览器原生凭据弹窗，零 UI 代码、零会话管理
- *   2. 凭据按 origin 缓存，同源 iframe（落地页预览）与 SSE 自动带上
- *   3. 中间件层统一拦截，所有页面 + API 全覆盖，无需逐路由加守卫
+ * 放行名单：
+ *   /login             登录页本身，否则死循环
+ *   /api/auth/login    提交账号密码
+ *   /api/auth/logout   退出（无 cookie 时也让它正常清一下）
+ *
+ * 未登录时：
+ *   页面请求 → 302 到 /login?next=<原路径>，登录后自动回跳
+ *   API 请求 → 401 JSON，避免前端拿到一张 HTML 还在那解析
+ *
+ * 为什么不用 Basic Auth：
+ *   它没有退出登录、凭据按 origin 缓存且关浏览器常要重输，
+ *   输错一次还会被浏览器反复自动重试，体验和可维护性都差。
  */
-export function middleware(req: NextRequest) {
-  const expectUser = process.env.AUTH_USER;
-  const expectPass = process.env.AUTH_PASSWORD;
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout'];
 
-  // 未配置凭据 → 鉴权关闭
-  if (!expectUser || !expectPass) return NextResponse.next();
+export async function middleware(req: NextRequest) {
+  if (!authEnabled()) return NextResponse.next();
 
-  const header = req.headers.get('authorization');
-  if (header?.startsWith('Basic ')) {
-    try {
-      const decoded = atob(header.slice(6));
-      const idx = decoded.indexOf(':');
-      if (idx > 0) {
-        const u = decoded.slice(0, idx);
-        const p = decoded.slice(idx + 1);
-        if (u === expectUser && p === expectPass) return NextResponse.next();
-      }
-    } catch {
-      // base64 解码失败 → 走 401
-    }
+  const { pathname, search } = req.nextUrl;
+  if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
+
+  const user = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+  if (user) return NextResponse.next();
+
+  // API / SSE 一律返回 JSON 401，前端按接口失败处理
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.json(
+      { ok: false, error: 'unauthorized', message: '登录已过期，请重新登录' },
+      { status: 401 },
+    );
   }
 
-  return new NextResponse('需要登录后访问', {
-    status: 401,
-    headers: {
-      'WWW-Authenticate': 'Basic realm="Lumenvia", charset="UTF-8"',
-      'Content-Type': 'text/plain; charset=utf-8',
-    },
-  });
+  const loginUrl = req.nextUrl.clone();
+  loginUrl.pathname = '/login';
+  loginUrl.search = '';
+  loginUrl.searchParams.set('next', pathname + search);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {

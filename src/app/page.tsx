@@ -95,6 +95,8 @@ export default function Page() {
   const [kb, setKb] = useState<{ stats: Record<string, number>; groups: Record<string, Array<{ title: string; source: string }>> } | null>(null);
   const [llmMode, setLlmMode] = useState<string>('');
   const [kbTotal, setKbTotal] = useState(0);
+  /** 是否开启了会话鉴权：开了才显示「退出登录」 */
+  const [authOn, setAuthOn] = useState(false);
 
   // 澄清表单
   const [market, setMarket] = useState('US');
@@ -136,6 +138,7 @@ export default function Page() {
       .then((d) => {
         setLlmMode(d.llm);
         if (typeof d.kbEntries === 'number') setKbTotal(d.kbEntries);
+        if (typeof d.authEnabled === 'boolean') setAuthOn(d.authEnabled);
       })
       .catch(() => {});
 
@@ -439,6 +442,16 @@ export default function Page() {
   // 清理
   useEffect(() => () => { esRef.current?.close(); }, []);
 
+  /** 退出登录：清 cookie 后整页回登录页 */
+  async function logout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // 网络失败也照跳，反正 cookie 里那份 30 天后自然过期
+    }
+    window.location.replace('/login');
+  }
+
   const passedCount = readiness
     ? [readiness.factDensity >= 60, readiness.citationCoverage >= 70, readiness.entityConsistency >= 80, readiness.crawlability >= 75].filter(Boolean).length
     : 0;
@@ -451,6 +464,7 @@ export default function Page() {
         <div className="header-right">
           <span><span className="status-dot" />知识库 {kbTotal} 条 · 代码内置</span>
           <span>{llmMode === 'live' ? 'LLM 在线' : 'LLM 离线模式'}</span>
+          {authOn ? <button className="logout-btn" onClick={logout} title="退出登录">退出</button> : null}
         </div>
       </header>
 
