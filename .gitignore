@@ -10,6 +10,10 @@ out/
 .env.local
 .env*.local
 
+# 模板文件不含真实密钥，必须入库（覆盖全局 .env.* 忽略规则）
+!.env.example
+!.env.production.example
+
 # TypeScript 增量构建缓存
 *.tsbuildinfo
 
