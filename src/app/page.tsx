@@ -192,7 +192,12 @@ export default function Page() {
       const r = await fetch(`/api/jobs?id=${id}`);
       const d = await r.json();
       if (!d.ok || !d.job) {
-        pushMsg({ role: 'agent', text: `无法打开该记录：${d.error ?? '未知错误'}` });
+        pushMsg({
+          role: 'agent',
+          text: `无法打开该记录：${d.error ?? '未知错误'}。\n\n`
+            + '历史记录保存在运行实例的内存中，在 Serverless 多实例部署下可能已随实例回收而失效。'
+            + '重新执行一次即可重新生成。',
+        });
         return;
       }
       const j = d.job as {
@@ -709,24 +714,42 @@ export default function Page() {
                       {p.locale.toUpperCase()}
                     </button>
                   ))}
-                  <a
+                  <button
                     className="open-link"
-                    href={currentJobId ? `/api/preview/${currentJobId}?locale=${activeLocale}` : '#'}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => { if (!currentJobId) e.preventDefault(); }}
-                    title="在独立标签页打开，地址栏是可分享的真实 URL"
+                    onClick={() => {
+                      const p = pages.find((x) => x.locale === activeLocale);
+                      if (!p?.html) return;
+                      // 直接用本次运行结果渲染，不依赖服务端任务记录：
+                      // serverless 多实例下 /api/preview/{id} 可能落到没有该记录的 isolate
+                      const blob = new Blob([p.html], { type: 'text/html;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, '_blank', 'noreferrer');
+                      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                    }}
+                    title="在独立标签页打开本次生成的页面"
                   >
                     ↗ 新窗口打开
-                  </a>
-                  <a
+                  </button>
+                  <button
                     className="open-link"
-                    href={currentJobId ? `/api/preview/${currentJobId}?locale=${activeLocale}&dl=1` : '#'}
-                    onClick={(e) => { if (!currentJobId) e.preventDefault(); }}
+                    onClick={() => {
+                      const p = pages.find((x) => x.locale === activeLocale);
+                      if (!p?.html) return;
+                      const baseSlug = (p.slug || 'landing-page').replace(new RegExp(`-${p.locale}$`), '');
+                      const blob = new Blob([p.html], { type: 'text/html;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${baseSlug}-${p.locale}.html`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                    }}
                     title="下载成 .html 单文件，零外部依赖，可直接丢给客户或评委"
                   >
                     ↓ 下载 .html
-                  </a>
+                  </button>
                 </div>
                 <div className="frame-wrap">
                   <iframe
