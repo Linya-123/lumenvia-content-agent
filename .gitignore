@@ -18,3 +18,5 @@ out/
 
 # 系统文件
 .DS_Store
+# Local benchmark outputs / annotated content (do not commit)
+benchmark-results/

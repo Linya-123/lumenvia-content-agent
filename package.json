@@ -7,7 +7,22 @@
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-8080}",
     "typecheck": "tsc --noEmit",
-    "check-llm": "tsx --env-file=.env.local scripts/check-llm.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "check-llm": "tsx --env-file=.env.local scripts/check-llm.ts",
+    "benchmark:dry": "node scripts/benchmark-deepseek.mjs --dry-run",
+    "benchmark:pilot": "node --env-file=.env.local scripts/benchmark-deepseek.mjs --pilot",
+    "benchmark:all": "node --env-file=.env.local scripts/benchmark-deepseek.mjs --all",
+    "benchmark:remaining": "node --env-file=.env.local scripts/benchmark-deepseek.mjs --remaining",
+    "test:v8:offline": "node --test tests/fact-guard-runtime.cjs tests/experiment-runner.test.mjs",
+    "test:v9:offline": "node --test tests/fact-guard-runtime.cjs tests/experiment-runner.test.mjs tests/v9-hybrid-runtime.cjs",
+    "test:v91:offline": "node --test tests/fact-guard-runtime.cjs tests/experiment-runner.test.mjs tests/v9-hybrid-runtime.cjs tests/v91-public-content-runtime.cjs tests/v91-editorial-refinement-runtime.cjs tests/v91-qa-style-runtime.cjs",
+    "test:v92:offline": "node --test tests/fact-guard-runtime.cjs tests/experiment-runner.test.mjs tests/v9-hybrid-runtime.cjs tests/v91-public-content-runtime.cjs tests/v91-editorial-refinement-runtime.cjs tests/v91-qa-style-runtime.cjs tests/v92-stability-runtime.cjs tests/v92-language-intake-runtime.cjs tests/v92-localization-rules-runtime.cjs tests/v92-localized-facts-runtime.cjs tests/v93-final-guard-runtime.cjs tests/v94-design-runtime.cjs",
+    "test:final-guard": "node --test tests/v93-final-guard-runtime.cjs",
+    "test:v94:visual": "node --test tests/v94-design-runtime.cjs",
+    "preview:v94:offline": "node scripts/reproduce-v94-preview.cjs",
+    "test:v95:design": "node --test tests/v95-dynamic-design-runtime.cjs tests/demo-fact-localization-runtime.cjs",
+    "test:v95:offline": "node --test tests/fact-guard-runtime.cjs tests/experiment-runner.test.mjs tests/v9-hybrid-runtime.cjs tests/v91-public-content-runtime.cjs tests/v91-editorial-refinement-runtime.cjs tests/v91-qa-style-runtime.cjs tests/v92-stability-runtime.cjs tests/v92-language-intake-runtime.cjs tests/v92-localization-rules-runtime.cjs tests/v92-localized-facts-runtime.cjs tests/v93-final-guard-runtime.cjs tests/v94-design-runtime.cjs tests/v95-dynamic-design-runtime.cjs tests/demo-fact-localization-runtime.cjs",
+    "preview:v95:offline": "node scripts/preview-v95-dynamic.cjs"
   },
   "dependencies": {
     "next": "15.5.28",
