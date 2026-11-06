@@ -2,8 +2,23 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import './globals.css';
+import {extractProductTopic,resolveTaskLocales,resolveLocaleSelection,type OutputLanguagePreference} from '@/lib/task-intake-v92';
 
 type StageState = 'idle' | 'running' | 'ok' | 'retried' | 'failed';
+type EvidenceKind = 'product_manual' | 'test_report' | 'declaration' | 'other';
+type EvidenceInput = { id: string; name: string; kind: EvidenceKind; text: string };
+type V9Review = {
+  profile: Array<{id:string;field:string;value:string;sourceId:string;verification:string}>;
+  claims: Array<{id:string;locale:string;fieldPath:string;original:string;final:string;action:string;reason:string;factIds:string[];sourceIds:string[]}>;
+  missingInfo: Array<{field:string;label:string;priority:string}>;
+  publicationReady:boolean;label:string;reasons:string[];
+  editorial?: Array<{locale:string;section:string;action:string;question:string;reason:string}>;
+};
+type EvidenceAudit = {
+  issues: Array<{ locale: string; ruleId: string; matched: string; reason: string; candidateEvidenceIds: string[] }>;
+  unreviewedCount: number;
+  note: string;
+};
 
 type Msg = {
   role: 'agent' | 'user';
@@ -48,17 +63,17 @@ const STAGES = [
 ];
 
 const MARKETS = [
-  { id: 'US', label: '北美（US/CA）', locales: ['en'] },
-  { id: 'DE', label: '西欧（DE/FR）', locales: ['de'] },
-  { id: 'ES', label: '南欧（ES/IT）', locales: ['es'] },
-  { id: 'EU', label: '欧盟全境', locales: ['en', 'de', 'es'] },
+  { id: 'US', label: '美国（US）', locales: ['en'] },
+  { id: 'DE', label: '德国（DE）', locales: ['de'] },
+  { id: 'ES', label: '西班牙（ES）', locales: ['es'] },
+  { id: 'EU', label: '三语种比较（US/DE/ES）', locales: ['en', 'de', 'es'] },
 ];
 
 // 三个示例提示词：点一下直接执行，走预置快照（不调模型，不耗额度）
 const EXAMPLES = [
-  { id: 'us-solar-light', label: '北美 · 太阳能安防灯', prompt: '帮我做一个北美市场的户外太阳能安防灯落地页', market: 'US' },
+  { id: 'us-solar-light', label: '美国 · 太阳能安防灯', prompt: '帮我做一个北美市场的户外太阳能安防灯落地页', market: 'US' },
   { id: 'de-solar-light', label: '德国 · 德语版', prompt: '德国市场的太阳能安防灯落地页，只要德语版', market: 'DE' },
-  { id: 'eu-three-locale', label: '欧盟 · 三语种', prompt: '欧盟全境的户外太阳能灯落地页，要英文德语西班牙语三个版本', market: 'EU' },
+  { id: 'eu-three-locale', label: '英语/德语/西语 · 演示', prompt: '户外太阳能灯落地页演示，要英文德语西班牙语三个版本', market: 'EU' },
 ];
 
 // 富文本：只处理 **加粗** 与 `代码`
@@ -101,11 +116,59 @@ export default function Page() {
   const [kbTotal, setKbTotal] = useState(0);
   /** 是否开启了会话鉴权：开了才显示「退出登录」 */
   const [authOn, setAuthOn] = useState(false);
+  const [marketCsv, setMarketCsv] = useState('');
+  const [marketFile, setMarketFile] = useState('');
+  const [marketCsvError, setMarketCsvError] = useState('');
+  const [evidenceKind, setEvidenceKind] = useState<EvidenceKind>('product_manual');
+  const [evidenceDocs, setEvidenceDocs] = useState<EvidenceInput[]>([]);
+  const [evidenceError, setEvidenceError] = useState('');
+  const [evidenceAudit, setEvidenceAudit] = useState<EvidenceAudit | null>(null);
+  const [reviewV9,setReviewV9] = useState<V9Review | null>(null);
+  const [productFactsText,setProductFactsText] = useState('');
+  const [productFactsError,setProductFactsError] = useState('');
+
+  async function importMarketCsv(file: File | undefined) {
+    if (!file) return;
+    try {
+      if (!/\.csv$/i.test(file.name) || file.size > 100000) throw new Error('只能选择100 KB以内的CSV文件');
+      const txt = await file.text();
+      setMarketCsv(txt);
+      setMarketFile(file.name);
+      setMarketCsvError('');
+    } catch (e) {
+      setMarketCsv('');
+      setMarketFile('');
+      setMarketCsvError((e as Error).message);
+    }
+  }
+
+  async function importEvidenceFiles(fileList: FileList | null) {
+    if (!fileList) return;
+    try {
+      const files = Array.from(fileList);
+      if (files.length > 3) throw new Error('每次最多添加3个文件');
+      const docs: EvidenceInput[] = [];
+      for (const [i, f] of files.entries()) {
+        if (!/\.(txt|md|json)$/i.test(f.name)) throw new Error('仅支持纯文本 TXT、MD、JSON；PDF 不自动解析');
+        if (f.size > 50000) throw new Error(`${f.name} 超出50 KB限制`);
+        const text = await f.text();
+        if (!text.trim() || text.length > 20000) throw new Error(`${f.name} 为空或超出文本长度限制`);
+        docs.push({ id: `evidence_${Date.now()}_${i}`, name: f.name, kind: evidenceKind, text });
+      }
+      setEvidenceDocs(docs);
+      setEvidenceError('');
+    } catch (e) {
+      setEvidenceError((e as Error).message);
+      setEvidenceDocs([]);
+    }
+  }
 
   // 澄清表单
   const [market, setMarket] = useState('US');
   const [category, setCategory] = useState('outdoor-lighting');
   const [topic, setTopic] = useState('outdoor solar security lighting');
+  // Explicit output language is independent of the target sales market.
+  const [languagePreference,setLanguagePreference]=useState<OutputLanguagePreference>('auto');
   const [phase, setPhase] = useState<'idle' | 'askMarket' | 'ready'>('idle');
   const [runId, setRunId] = useState(0);
   const [exampleId, setExampleId] = useState<string | null>(null);
@@ -184,11 +247,18 @@ export default function Page() {
     setStageStat(Array(9).fill('待执行'));
     setReadiness(null);
     setSemantic(null);
+    setReviewV9(null);
+    setProductFactsText('');
+    setProductFactsError('');
     setPages([]);
     setCurrentJobId(null);
     setBase(null);
     setExampleId(null);
     setInput('');
+    setMarket('US');
+    setCategory('outdoor-lighting');
+    setTopic('outdoor solar security lighting');
+    setLanguagePreference('auto');
     setPhase('idle');
     setTab('pipeline');
     lastPrompt.current = '';
@@ -228,6 +298,9 @@ export default function Page() {
       setStages(st);
       setStageStat(stat);
       setReadiness(j.readiness ?? null);
+      setReviewV9((j as typeof j & {profileV9?:V9Review['profile']; claimsV9?:V9Review['claims']; missingV9?:V9Review['missingInfo']}).profileV9
+        ? {profile:(j as any).profileV9,claims:(j as any).claimsV9??[],missingInfo:(j as any).missingV9??[],
+          publicationReady:false,label:'历史记录 · 未独立核验',reasons:[]} : null);
       setSemantic(
         j.semanticScore != null
           ? { score: j.semanticScore, issues: [] }
@@ -237,6 +310,7 @@ export default function Page() {
       if (j.pages?.length) setActiveLocale(j.pages[0].locale);
       setCurrentJobId(j.id);
       setMarket(j.market);
+      setLanguagePreference(j.locales?.length===3?'all':(j.locales?.[0] as OutputLanguagePreference)||'auto');
       setCategory(j.category);
       setTopic(j.topic);
 
@@ -274,6 +348,18 @@ export default function Page() {
     setExampleId(null);
     pushMsg({ role: 'user', text: v });
 
+    // The prompt may describe a previously unknown product. Do not retain demo values
+    // or treat the entire message as the product name. The user can edit both fields.
+    if (!baseJobRef.current) {
+      const extracted=extractProductTopic(v);
+      if(extracted) {
+        setTopic(extracted);
+        const isLighting=/太阳能灯|感应灯|照明|路灯|灯具|\blight(?:ing)?\b|\blamp\b|beleuchtung/iu.test(v);
+        setCategory(isLighting?'outdoor-lighting':'general-product');
+      }
+      setLanguagePreference('auto');
+    }
+
     // 续写模式：基线已确定市场/品类/选题，直接改，不再重新澄清
     if (baseJobRef.current) {
       setPhase('ready');
@@ -307,6 +393,7 @@ export default function Page() {
     setMarket(ex.market);
     setCategory('outdoor-lighting');
     setTopic('outdoor solar security lighting');
+    setLanguagePreference('auto');
     setPhase('ready');
     setTab('pipeline');
     pushMsg({ role: 'user', text: ex.prompt });
@@ -330,7 +417,7 @@ export default function Page() {
     setTimeout(() => {
       pushMsg({
         role: 'agent',
-        text: `已确认市场。请在右侧补齐**品类**与**选题**后开始执行。\n\n选题建议保持默认——它是根据你现有运营数据的缺口比算出来的，不是拍脑袋。`,
+        text: `已确认目标市场。请在右侧核对**输出语言、品类与产品主题**后开始执行。未提供市场数据时，S2会给出当前产品的定性内容建议，不虚构曝光数据。`,
       });
     }, 300);
   }
@@ -341,6 +428,17 @@ export default function Page() {
     const base = baseJobRef.current;
     const isRevision = !!base && lastPrompt.current.trim().length > 0;
     setRunning(true);
+    setEvidenceAudit(null);
+    setReviewV9(null);
+    setProductFactsError('');
+    let userFacts: Array<{field:string;value:string}> = [];
+    try {
+      userFacts = productFactsText.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(line=>{
+        const sep=line.indexOf(':');
+        if(sep<=0)throw new Error('请使用 field: value 格式，每行一个字段');
+        return {field:line.slice(0,sep).trim(),value:line.slice(sep+1).trim()};
+      });
+    } catch(e) {setProductFactsError((e as Error).message);setRunning(false);return;}
     setStages(Array(9).fill('idle'));
     setStageStat(Array(9).fill('待执行'));
     if (!isRevision) {
@@ -351,7 +449,7 @@ export default function Page() {
     setCurrentJobId(null);
     setTab('pipeline');
 
-    const locales = MARKETS.find((m) => m.id === market)!.locales;
+    const locales = resolveTaskLocales(market as 'US'|'DE'|'ES'|'EU',lastPrompt.current,languagePreference);
     const r = await fetch('/api/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -359,11 +457,20 @@ export default function Page() {
         market, locales, category, topic, intent: 'landing-page',
         prompt: lastPrompt.current,
         exampleId,
+        productFacts:userFacts,
+        evidenceDocs,
+        marketCsv: marketCsv || undefined,
         // 续写：告诉后端基于哪条记录改，以及改成什么样
         ...(isRevision ? { parentId: base, instruction: lastPrompt.current } : {}),
       }),
     });
 
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: `HTTP ${r.status}`}));
+      pushMsg({role:'agent',text:`请求被拒绝：${String(err.error ?? r.status)}`});
+      setRunning(false);
+      return;
+    }
     const reader = r.body?.getReader();
     if (!reader) { setRunning(false); return; }
     const dec = new TextDecoder();
@@ -399,13 +506,12 @@ export default function Page() {
           });
           if (i === 7 && e.detail) setReadiness(e.detail as Readiness);
           if (i === 6 && e.detail) {
-            const d = e.detail as { issues?: string[] };
-            setSemantic((prev) => ({ score: prev?.score ?? 0, issues: d.issues ?? [] }));
+            const d = e.detail as { score?: number | null; issues?: string[] };
+            setSemantic(typeof d.score === 'number' && Number.isFinite(d.score)
+              ? { score: d.score, issues: d.issues ?? [] } : null);
           }
-          if (i === 6) {
-            const sc = Number(String(e.summary).replace(/[^\d]/g, ''));
-            if (!Number.isNaN(sc)) setSemantic((prev) => ({ score: sc, issues: prev?.issues ?? [] }));
-          }
+        } else if (e.kind === 'audit') {
+          setEvidenceAudit(e.report as EvidenceAudit);
         } else if (e.kind === 'message') {
           pushMsg({ role: 'agent', text: String(e.content ?? '') });
         } else if (e.kind === 'citation') {
@@ -418,10 +524,12 @@ export default function Page() {
             return n;
           });
         } else if (e.kind === 'done') {
+          if (e.reviewStatus) setReviewV9(e.reviewStatus as V9Review);
           if (e.jobId) {
             setCurrentJobId(String(e.jobId));
             // 新产出成为下一次「继续调整」的基线，可以一直往下迭代
-            setBase(String(e.jobId));
+            if (Array.isArray(e.pages) && e.pages.length) setBase(String(e.jobId));
+            else setBase(null);
           }
           // 运行完成：刷新历史列表，新产出立即出现在左侧
           loadJobs();
@@ -430,6 +538,7 @@ export default function Page() {
           if (typeof e.semanticScore === 'number') {
             setSemantic((prev) => ({ score: e.semanticScore as number, issues: prev?.issues ?? [] }));
           }
+          if (e.mode === 'rule-audit') setTab('qa');
           if (Array.isArray(e.pages) && e.pages.length) {
             setActiveLocale((e.pages[0] as { locale: string }).locale);
             setTab('output');
@@ -495,7 +604,7 @@ export default function Page() {
     <div className="shell">
       <header>
         <div className="logo"><div className="logo-mark">L</div> Lumenvia Content Agent</div>
-        <div className="tagline">跨语言内容生产 · AI 搜索可见性</div>
+        <div className="tagline">跨语言内容生产 · AI 搜索可见性 · V9.2 语言与产品识别修复本地版</div>
         <button
           className={`llm-toggle${llmMode === 'live' ? ' on' : ''}`}
           onClick={toggleLlm}
@@ -654,6 +763,17 @@ export default function Page() {
                   </select>
                 </div>
                 <div className="field-row">
+                  <label>输出语言</label>
+                  <select value={languagePreference} onChange={(e) => setLanguagePreference(e.target.value as OutputLanguagePreference)}>
+                    <option value="auto">自动匹配目标市场（尊重明确的语言要求）</option>
+                    <option value="en">英语（en）</option>
+                    <option value="de">德语（de）</option>
+                    <option value="es">西班牙语（es）</option>
+                    <option value="all">英语 / 德语 / 西班牙语</option>
+                  </select>
+                </div>
+                <div className="hint">当前输出：{resolveLocaleSelection(market as 'US'|'DE'|'ES'|'EU',lastPrompt.current,languagePreference).locales.map(x=>({en:'英语',de:'德语',es:'西班牙语'}[x])).join(' / ')}（{({manual:'手动指定',user_request:'根据本次语言要求',market_default:'目标市场推荐'} as const)[resolveLocaleSelection(market as 'US'|'DE'|'ES'|'EU',lastPrompt.current,languagePreference).source]}）。市场决定内容方向与审核背景，语言决定文案表达。例如德国市场可指定英文网页。</div>
+                <div className="field-row">
                   <label>品类</label>
                   <input value={category} onChange={(e) => setCategory(e.target.value)} />
                 </div>
@@ -661,11 +781,41 @@ export default function Page() {
                   <label>选题</label>
                   <input value={topic} onChange={(e) => setTopic(e.target.value)} />
                 </div>
+                <div className="field-row">
+                  <label>产品事实（可选，每行 field: value）</label>
+                  <textarea value={productFactsText} onChange={e=>setProductFactsText(e.target.value)} rows={4}
+                    placeholder={'battery: 5200 mAh LiFePO4\nlumen: 1100 lm\nip: IP65'} />
+                </div>
+                <div className="hint">不填写也能生成。可用字段如 model、sku、battery、lumen、ip、runtime、range、panel_power、install。资料仅视为用户陈述，未独立核验。普通任务不加载虚构演示参数。</div>
+                {productFactsError ? <div className="hint" style={{color:'crimson'}}>{productFactsError}</div> : null}
+                <div className="field-row">
+                  <label>市场数据CSV（可选）</label>
+                  <input type="file" accept=".csv" onChange={(e) => { void importMarketCsv(e.target.files?.[0]); }} />
+                </div>
+                <div className="hint">{marketFile ? `使用已上传数据：${marketFile}` : '未上传：S2根据本次产品进行定性内容规划，不套用其他产品的演示统计。'}</div>
+                {marketCsvError ? <div className="hint" style={{color:'crimson'}}>{marketCsvError}</div> : null}
+                <div className="field-row">
+                  <label>佐证资料类型</label>
+                  <select value={evidenceKind} onChange={(e) => setEvidenceKind(e.target.value as EvidenceKind)}>
+                    <option value="product_manual">产品手册</option>
+                    <option value="test_report">检测报告</option>
+                    <option value="declaration">合规声明</option>
+                    <option value="other">其他资料</option>
+                  </select>
+                </div>
+                <div className="field-row">
+                  <label>上传产品资料（TXT / MD / JSON）</label>
+                  <input type="file" multiple accept=".txt,.md,.json"
+                    onChange={(e) => { void importEvidenceFiles(e.target.files); }} />
+                </div>
+                <div className="hint">已选择 {evidenceDocs.length} 个文件。资料未核验真实性；文本可能发往已配置的大模型服务商，请勿上传敏感原件。</div>
+                {evidenceDocs.map((d) => <div key={d.id} className="hint">待核验：{d.name}</div>)}
+                {evidenceError ? <div className="hint" style={{color:'crimson'}}>{evidenceError}</div> : null}
                 <button className="run-btn" onClick={run} disabled={running}>
                   {running ? '执行中…' : '开始执行'}
                 </button>
                 <div className="hint">
-                  选题由运营数据的缺口比算出。改动它会影响 S2 的判断依据。
+                  未上传适配的实际市场数据时，S2 不会提供虚构的搜索量或曝光率。
                 </div>
               </div>
             ) : null}
@@ -718,12 +868,127 @@ export default function Page() {
 
           {/* 质检 */}
           <div className={`pane ${tab === 'qa' ? 'active' : ''}`}>
+            {reviewV9 ? (
+              <div className="qa-review" aria-label="产品事实与来源审核">
+                <div className="check qa-review-status">
+                  <span className={`ic ${reviewV9.publicationReady ? 'ok' : 'warn'}`} aria-hidden="true">
+                    {reviewV9.publicationReady ? '✓' : '!'}
+                  </span>
+                  <div className="qa-review-status-copy">
+                    <b>{reviewV9.label}</b>
+                    <div className="detail qa-review-totals">
+                      {reviewV9.claims.length} 条声明 · {reviewV9.claims.filter(c => c.action === 'safe_rewrite').length} 条安全改写 · {reviewV9.missingInfo.length} 项待补充
+                    </div>
+                    <div className="detail">用户提供的信息尚未经过独立核验；生成完成不等于可以直接商用发布。</div>
+                  </div>
+                </div>
+
+                {/* 主面板一：事实审查 + 资料来源，不单独重复一个“本次产品资料”卡片 */}
+                <details className="qa-review-section">
+                  <summary className="qa-review-summary">
+                    <span className="qa-review-section-title">事实与来源审核</span>
+                    <span className="qa-review-count" aria-label={`${reviewV9.claims.length} 条声明`}>{reviewV9.claims.length}</span>
+                  </summary>
+                  <div className="qa-review-body">
+                    <div className="qa-review-help">逐条查看声明、对应来源及安全改写。来源与用户资料一致不代表经过独立验证。</div>
+                    {reviewV9.claims.length ? reviewV9.claims.slice(0, 80).map((c, i) => (
+                      <div className="check qa-review-item" key={c.id + '-' + i}>
+                        <span className={`ic ${c.action === 'safe_rewrite' || c.action === 'withheld' ? 'warn' : 'ok'}`} aria-hidden="true">
+                          {c.action === 'safe_rewrite' || c.action === 'withheld' ? '!' : '✓'}
+                        </span>
+                        <div className="qa-review-item-copy">
+                          <b>{c.locale} · {c.fieldPath} · {c.action === 'safe_rewrite' ? '安全改写' : c.action === 'withheld' ? '暂缓声明' : '与本次资料一致'}</b>
+                          <div className="detail">原文：{c.original}</div>
+                          {c.action !== 'retained' ? <div className="detail">{c.action === 'withheld' ? '暂缓：' : '改写：'}{c.final || '该声明未放入最终页面'}</div> : null}
+                          <div className="detail">{c.reason} · 关联事实：{c.factIds.join(', ') || '无'} · 来源：{c.sourceIds.join(', ') || '无'}</div>
+                        </div>
+                      </div>
+                    )) : <div className="qa-review-empty">本次没有可展示的声明记录；不代表所有事实已核验。</div>}
+                    {reviewV9.claims.length > 80 ? <div className="qa-review-empty">这里展示前 80 条声明，完整记录请以原始任务数据为准。</div> : null}
+                    <details className="qa-review-source-list">
+                      <summary className="qa-review-source-summary">查看本次产品资料及原始来源（{reviewV9.profile.length}）</summary>
+                      <div className="qa-review-source-body">
+                        {reviewV9.profile.map(x => (
+                          <div className="qa-review-source-item" key={x.id}>
+                            <b>{x.id} · {x.field}</b>
+                            <div className="detail">{x.value} · 来源：{x.sourceId} · 尚未独立核验</div>
+                          </div>
+                        ))}
+                        {!reviewV9.profile.length ? <div className="qa-review-empty">本次没有可用的产品事实资料。</div> : null}
+                      </div>
+                    </details>
+                  </div>
+                </details>
+
+                {/* 主面板二：普通用户最需要操作的资料缺口 */}
+                <details className="qa-review-section">
+                  <summary className="qa-review-summary">
+                    <span className="qa-review-section-title">待补充资料</span>
+                    <span className="qa-review-count" aria-label={`${reviewV9.missingInfo.length} 项待补充资料`}>{reviewV9.missingInfo.length}</span>
+                  </summary>
+                  <div className="qa-review-body">
+                    {reviewV9.missingInfo.map(x => (
+                      <div className="check qa-review-item" key={x.field}>
+                        <span className="ic warn" aria-hidden="true">!</span>
+                        <div className="qa-review-item-copy">
+                          <b>{x.label}</b>
+                          <div className="detail">尚未提供，不会自行补造。</div>
+                        </div>
+                      </div>
+                    ))}
+                    {!reviewV9.missingInfo.length ? <div className="qa-review-empty">本次没有新增的资料缺失提示。</div> : null}
+                  </div>
+                </details>
+
+                {/* 次级入口：内容选择决策仍保留，日常默认隐藏 */}
+                <details className="qa-review-advanced">
+                  <summary className="qa-review-advanced-summary">
+                    <span>查看详细生成记录</span>
+                    <span className="qa-review-advanced-note">{reviewV9.editorial?.length ?? 0} 项内容调整</span>
+                  </summary>
+                  <div className="qa-review-advanced-body">
+                    <div className="qa-review-advanced-intro">记录消费者页面的 FAQ、场景和安全兜底文案选择；事实声明的原文、改写与来源详见上方「事实与来源审核」。</div>
+                    {(reviewV9.editorial ?? []).map((x, i) => (
+                      <div className="check qa-review-item" key={'editorial-' + i}>
+                        <span className={`ic ${x.action === 'excluded_from_public_page' ? 'warn' : 'ok'}`} aria-hidden="true">
+                          {x.action === 'excluded_from_public_page' ? '!' : '✓'}
+                        </span>
+                        <div className="qa-review-item-copy">
+                          <b>{x.locale} · {x.action === 'excluded_from_public_page' ? '未放入消费者页面' : x.action === 'added_grounded_scene' ? '补充应用场景' : x.action === 'grounded_fallback_copy' ? '优化安全兜底文案' : '补充通用选购问题'}</b>
+                          <div className="detail">{x.question}</div>
+                          <div className="detail">{x.reason}</div>
+                        </div>
+                      </div>
+                    ))}
+                    {!reviewV9.editorial?.length ? <div className="qa-review-empty">本次没有额外的内容筛选记录。</div> : null}
+                  </div>
+                </details>
+              </div>
+            ) : null}
+            {evidenceAudit ? (
+              <div className="check-list">
+                <div className="check">
+                  <span className="ic warn">!</span>
+                  <div><b>证据审查：{evidenceAudit.issues.length} 项高风险声明</b>
+                    <div className="detail">{evidenceAudit.unreviewedCount} 份上传文件尚未独立核验。{evidenceAudit.note}</div>
+                  </div>
+                </div>
+                {evidenceAudit.issues.map((issue, i) => (
+                  <div className="check" key={`${issue.ruleId}-${i}`}>
+                    <span className="ic warn">!</span>
+                    <div><b>{issue.locale}: {issue.ruleId}</b>
+                      <div className="detail">{issue.matched} · {issue.reason}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {readiness ? (
               <>
                 <div className="score-row">
                   {[
                     { k: '事实密度', v: readiness.factDensity, min: 60 },
-                    { k: '来源标注', v: readiness.citationCoverage, min: 70 },
+                    { k: '结构化标注', v: readiness.citationCoverage, min: 70 },
                     { k: '实体一致性', v: readiness.entityConsistency, min: 80 },
                     { k: '可抓取性', v: readiness.crawlability, min: 75 },
                   ].map((x) => (
@@ -744,7 +1009,7 @@ export default function Page() {
                     <div className="check" key={k}>
                       <span className={`ic ${notes.length ? 'warn' : 'ok'}`}>{notes.length ? '!' : '✓'}</span>
                       <div><b>{{
-                        factDensity: '事实密度', citationCoverage: '来源标注',
+                        factDensity: '事实密度', citationCoverage: '结构化标注',
                         entityConsistency: '实体一致性', crawlability: '可抓取性',
                       }[k] ?? k}</b>
                         <div className="detail">{notes.length ? notes.join('；') : '无问题'}</div>

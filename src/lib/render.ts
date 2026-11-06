@@ -1,5 +1,6 @@
 import type { JobSpec } from './types';
 import type { AdFact } from './pipeline';
+import { guardPageCopy, type ProductMetricIssue } from './fact-guard';
 
 /**
  * 落地页渲染器
@@ -49,16 +50,16 @@ const COPY: Record<Locale, {
     ctaPrimary: 'Request a Quote', ctaSecondary: 'See Full Specs',
     trust: ['per full charge', 'motion detection range', 'dust-tight, water-jet protected', 'typical installation'],
     specsTitle: 'Every number that matters for outdoor installation',
-    specsLead: 'These figures come from the product technical manual and third-party test reports. Where a rating depends on installation height or angle, the test condition is stated.',
+    specsLead: 'Illustrative demo data: product specifications and any supporting test reports must be verified before commercial use.',
     labelModel: 'Model', labelIP: 'Ingress protection', labelBattery: 'Battery', labelRuntime: 'Backup runtime',
     labelRange: 'Detection range', labelLumen: 'Light output', labelTemp: 'Operating temperature',
     labelCert: 'Certification', labelIncluded: 'Included',
     complianceTitle: 'Compliance & certification',
     complianceItems: [
-      'CE marking — EU Declaration of Conformity and authorised representative details supplied with every unit.',
-      'FCC Part 15 — verified for North American markets; test report available on request.',
-      'Energy labelling — rated per EU 2023/1670 for lighting products; energy class and rated power printed on the label.',
-      'No unsubstantiated superlatives — every performance claim is tied to a stated test condition or manufacturer measurement.',
+      'CE conformity status has not been verified for this demonstration product. Obtain applicable documentation before publishing a conformity claim.',
+      'FCC applicability and supporting evidence are not verified for this demonstration product.',
+      'EU light-source energy labelling (EU 2019/2015) depends on product classification. Annex IV excludes certain battery-operated products, including solar-powered garden lamps.',
+      'No certification, performance or testing claims should be published until their product evidence has been independently checked.',
     ],
     scenesTitle: "Built for the places you can't easily run a cable to",
     scenes: [
@@ -74,12 +75,12 @@ const COPY: Record<Locale, {
       { q: 'Do I need an electrician to install it?', a: 'No. The unit requires no wiring. Mounting hardware and a drilling template are included. Typical installation takes 15–20 minutes.' },
     ],
     formTitle: 'Get pricing for your project',
-    formSub: "Tell us your quantity and site type — we'll reply within one business day with pricing and lead time.",
+    formSub: 'Demo request form; response times and quotations have not been established.',
     formCta: 'Request Quote',
     fields: { name: 'Name', email: 'Work email', site: 'Site type', qty: 'Quantity' },
-    footerNote: 'All product data sourced from technical manual and third-party test reports.',
+    footerNote: 'Illustrative demonstration product; verify specifications and evidence before commercial publication.',
     techTitle: 'Why these numbers hold up in winter',
-    techLead: 'Most solar lights underdeliver after the third overcast week. Two components decide whether yours keeps working: the battery chemistry and the panel-to-battery balance.',
+    techLead: 'Battery chemistry and the size of the solar panel affect performance in low sunlight. Obtain actual test results before claiming winter performance.',
     techItems: [
       { h: 'LiFePO4 instead of Li-ion', p: 'The 5200 mAh LiFePO4 pack is rated for roughly 1,500 cycles to 80% retained capacity at room temperature. At −10 °C expect 60–70% of the nominal figure — that is why the winter runtime of 2–3 nights is stated separately from the 4–5 night summer figure.' },
       { h: 'Panel sized for a full recharge', p: 'The 5 W monocrystalline panel produces about 20 Wh on a day with 4 effective sun hours. The 5200 mAh pack holds about 19 Wh, so one decent day restores a full charge without relying on grid top-ups.' },
@@ -102,12 +103,12 @@ const COPY: Record<Locale, {
     ],
     serviceTitle: 'Shipping, returns and warranty',
     serviceItems: [
-      { h: 'Shipping', p: 'Free shipping on orders over $99. In-stock units leave the warehouse within one business day; delivery to US addresses is typically 3–5 business days.' },
-      { h: 'Returns', p: '30-day returns on unused units in original packaging. Return shipping is covered when the unit is faulty or was sent in error.' },
-      { h: 'Warranty', p: 'Two-year limited warranty covering the fixture, solar panel and battery. Claim with the SKU and order number printed on the carton.' },
+      { h: 'Shipping', p: 'Shipping fees, supported destinations and delivery times must be confirmed by the actual seller before publication.' },
+      { h: 'Returns', p: 'Return windows, conditions and any return costs are not verified for this demonstration product.' },
+      { h: 'Warranty', p: 'Manufacturer and statutory warranty terms must be confirmed for the actual product and destination market.' },
     ],
     bulkTitle: 'Buying for a project?',
-    bulkText: 'For multi-unit orders (property management, contractors, distributors) we quote tiered pricing, consolidated shipping and a single invoice. Tell us the quantity and site type in the form and we will reply with pricing and lead time within one business day.',
+    bulkText: 'For multi-unit orders, use the demo request form to outline quantities and installation locations. Pricing, lead time and availability require confirmation by the actual supplier.',
     footerLinks: [
       { h: 'Product', items: ['Technical specifications', 'Installation guide', 'Compliance & certification'] },
       { h: 'Ordering', items: ['Request a quote', 'Shipping & returns', 'Bulk & distributor pricing'] },
@@ -122,14 +123,14 @@ const COPY: Record<Locale, {
     ctaPrimary: 'Angebot anfordern', ctaSecondary: 'Technische Daten',
     trust: ['pro Vollladung', 'Erfassungsreichweite', 'staubdicht, strahlwassergeschützt', 'Montagedauer'],
     specsTitle: 'Alle Kennzahlen, die für die Außenmontage zählen',
-    specsLead: 'Die folgenden Werte stammen aus dem technischen Handbuch und Prüfberichten unabhängiger Testlabore. Wo ein Wert von der Montagehöhe oder dem Winkel abhängt, ist die Messbedingung jeweils angegeben.',
+    specsLead: 'Demonstrationsdaten: Produktwerte und etwaige Prüfnachweise müssen vor einer Veröffentlichung unabhängig geprüft werden.',
     labelModel: 'Modell', labelIP: 'Schutzart', labelBattery: 'Akku', labelRuntime: 'Notlaufzeit',
     labelRange: 'Erfassungsreichweite', labelLumen: 'Lichtleistung', labelTemp: 'Betriebstemperatur',
     labelCert: 'Zertifizierung', labelIncluded: 'Lieferumfang',
     complianceTitle: 'Konformität und Zertifizierung',
     complianceItems: [
-      'CE-Kennzeichnung — EU-Konformitätserklärung und Angaben zum Bevollmächtigten liegen jedem Gerät bei.',
-      'Energiekennzeichnung — Kennzeichnung nach EU 2023/1670 für Beleuchtungsprodukte; Energieeffizienzklasse und Nennleistung stehen auf dem Label.',
+      'CE-Konformität und entsprechende Unterlagen sind für dieses Demonstrationsprodukt nicht verifiziert.',
+      'Energiekennzeichnung nach EU 2019/2015: Produktklassifikation und Ausnahmen, insbesondere für bestimmte batteriebetriebene Leuchten, zuerst prüfen.',
       'Keine unsubstantiierten Werbeaussagen — alle Leistungsangaben sind an eine genannte Messbedingung oder Herstellerangabe gebunden.',
       'Angaben zu Umwelteigenschaften nur mit Beleg — Aussagen zur Umweltwirkung werden ohne belastbare Grundlage nicht verwendet.',
     ],
@@ -147,12 +148,12 @@ const COPY: Record<Locale, {
       { q: 'Ist eine Elektrofachkraft erforderlich?', a: 'Nein. Die Leuchte benötigt keine Verkabelung. Montagematerial und Bohrschablone liegen bei.' },
     ],
     formTitle: 'Preisanfrage für Ihr Projekt',
-    formSub: 'Nennen Sie uns Stückzahl und Einsatzort — wir antworten innerhalb eines Werktages mit Preis und Lieferzeit.',
+    formSub: 'Demoformular: Reaktionszeiten, Preise und Lieferfristen wurden nicht bestätigt.',
     formCta: 'Angebot anfordern',
     fields: { name: 'Name', email: 'Geschäftliche E-Mail', site: 'Einsatzort', qty: 'Stückzahl' },
-    footerNote: 'Alle Produktdaten stammen aus technischem Handbuch und Prüfberichten unabhängiger Labore.',
+    footerNote: 'Demonstrationsdaten: Produktaussagen und Prüfnachweise sind vor einer Veröffentlichung zu verifizieren.',
     techTitle: 'Warum diese Werte auch im Winter tragen',
-    techLead: 'Die meisten Solarlampen schwächeln nach der dritten trüben Woche. Zwei Bauteile entscheiden, ob Ihre weiterläuft: die Akkuchemie und das Verhältnis von Panel zu Akku.',
+    techLead: 'Die Akkuchemie und die Dimensionierung des Solarpanels beeinflussen den Betrieb bei wenig Sonnenlicht. Winterwerte sind erst nach Vorlage von Tests zu behaupten.',
     techItems: [
       { h: 'LiFePO4 statt Li-Ion', p: 'Der 5200-mAh-LiFePO4-Akku ist bei Raumtemperatur auf rund 1.500 Zyklen bis 80 % Restkapazität ausgelegt. Bei −10 °C sind es etwa 60–70 % des Nennwerts — deshalb wird die Winternutzung von 2 bis 3 Nächten getrennt von den 4 bis 5 Sommernächten angegeben.' },
       { h: 'Panel für eine Vollladung ausgelegt', p: 'Das 5-W-Monokristallpanel liefert an einem Tag mit 4 effektiven Sonnenstunden rund 20 Wh. Der 5200-mAh-Akku speichert etwa 19 Wh — ein ordentlicher Tag reicht damit für eine vollständige Ladung.' },
@@ -175,12 +176,12 @@ const COPY: Record<Locale, {
     ],
     serviceTitle: 'Versand, Rückgabe und Garantie',
     serviceItems: [
-      { h: 'Versand', p: 'Kostenloser Versand ab einem Bestellwert von 99 €. Verfügbare Geräte verlassen das Lager innerhalb eines Werktages; Lieferung innerhalb der EU üblicherweise 3–5 Werktage.' },
-      { h: 'Rückgabe', p: '30 Tage Rückgaberecht auf unbenutzte Geräte in der Originalverpackung. Die Rücksendekosten übernehmen wir bei Defekt oder Fehllieferung.' },
-      { h: 'Garantie', p: 'Zwei Jahre Herstellergarantie auf Leuchte, Solarpanel und Akku. Für die Abwicklung genügen SKU und Bestellnummer vom Karton.' },
+      { h: 'Versand', p: 'Versandkosten, Liefergebiete und Laufzeiten sind für dieses Demonstrationsprodukt noch nicht verifiziert.' },
+      { h: 'Rückgabe', p: 'Rückgabebedingungen und Rücksendekosten müssen vom tatsächlichen Anbieter bestätigt werden.' },
+      { h: 'Garantie', p: 'Herstellergarantie und gesetzliche Gewährleistungsrechte sind anhand des realen Angebots und Marktes zu prüfen.' },
     ],
     bulkTitle: 'Sie kaufen für ein Projekt?',
-    bulkText: 'Für Bestellungen mit mehreren Einheiten (Hausverwaltung, Handwerksbetriebe, Händler) bieten wir Staffelpreise, Sammelversand und eine Rechnung. Nennen Sie Stückzahl und Einsatzort im Formular — wir antworten innerhalb eines Werktages mit Preis und Lieferzeit.',
+    bulkText: 'Für größere Bestellungen können Sie im Demoformular Stückzahl und Einsatzort angeben. Preise, Lieferzeiten und Leistungen müssen vom tatsächlichen Anbieter bestätigt werden.',
     footerLinks: [
       { h: 'Produkt', items: ['Technische Daten', 'Montageanleitung', 'Konformität & Zertifizierung'] },
       { h: 'Bestellung', items: ['Angebot anfordern', 'Versand & Rückgabe', 'Staffelpreise für Händler'] },
@@ -195,14 +196,14 @@ const COPY: Record<Locale, {
     ctaPrimary: 'Solicitar presupuesto', ctaSecondary: 'Ver datos técnicos',
     trust: ['por carga completa', 'alcance de detección', 'estanco al polvo y a chorros de agua', 'tiempo de montaje'],
     specsTitle: 'Todos los datos que importan para la instalación exterior',
-    specsLead: 'Las siguientes cifras proceden del manual técnico del producto y de informes de ensayo de laboratorios independientes. Cuando un valor depende de la altura o del ángulo de montaje, se indica la condición de medición.',
+    specsLead: 'Los valores son datos ilustrativos de demostración. Verifique la ficha técnica y los ensayos del producto real antes de publicar cifras de rendimiento.',
     labelModel: 'Modelo', labelIP: 'Grado de protección', labelBattery: 'Batería', labelRuntime: 'Autonomía',
     labelRange: 'Alcance de detección', labelLumen: 'Flujo luminoso', labelTemp: 'Temperatura de servicio',
     labelCert: 'Certificación', labelIncluded: 'Contenido',
     complianceTitle: 'Conformidad y certificación',
     complianceItems: [
-      'Marcado CE — cada unidad incluye la declaración de conformidad UE y los datos del representante autorizado.',
-      'Etiquetado energético — según el Reglamento UE 2023/1670; la clase energética y la potencia nominal figuran en la etiqueta.',
+      'La conformidad CE y los documentos justificativos de este producto de demostración no están verificados.',
+      'Etiquetado energético UE 2019/2015: se deben revisar la clasificación del producto y las exclusiones aplicables antes de formular una declaración.',
       'Sin superlativos no justificados — todas las afirmaciones de rendimiento están vinculadas a una condición de medición indicada.',
       'Declaraciones ambientales con respaldo — no se utilizan afirmaciones sobre impacto ambiental sin base verificable.',
     ],
@@ -220,12 +221,12 @@ const COPY: Record<Locale, {
       { q: '¿Hace falta un electricista?', a: 'No. La luminaria no requiere cableado. Se incluyen el material de montaje y la plantilla de taladro.' },
     ],
     formTitle: 'Presupuesto para tu proyecto',
-    formSub: 'Indícanos cantidad y tipo de instalación: respondemos en un día laborable con precio y plazo de entrega.',
+    formSub: 'Formulario de demostración: los plazos de respuesta y los presupuestos no están confirmados.',
     formCta: 'Solicitar presupuesto',
     fields: { name: 'Nombre', email: 'Correo profesional', site: 'Tipo de instalación', qty: 'Cantidad' },
-    footerNote: 'Todos los datos de producto proceden del manual técnico y de informes de laboratorios independientes.',
+    footerNote: 'Producto ficticio de demostración: verifique las especificaciones y la documentación antes de cualquier publicación comercial.',
     techTitle: 'Por qué estos datos aguantan el invierno',
-    techLead: 'La mayoría de las luces solares pierden rendimiento tras la tercera semana nublada. Dos componentes deciden si la suya seguirá funcionando: la química de la batería y el equilibrio entre panel y batería.',
+    techLead: 'La química de la batería y el tamaño del panel influyen en el rendimiento con poca luz solar. Las prestaciones invernales requieren pruebas del producto.',
     techItems: [
       { h: 'LiFePO4 en lugar de Li-ion', p: 'La batería LiFePO4 de 5200 mAh está especificada para unos 1.500 ciclos hasta el 80 % de capacidad a temperatura ambiente. A −10 °C se obtiene un 60–70 % del valor nominal: por eso la autonomía de invierno (2–3 noches) se indica aparte de la de verano (4–5).' },
       { h: 'Panel dimensionado para una carga completa', p: 'El panel monocristalino de 5 W produce unos 20 Wh en un día con 4 horas de sol efectivas. La batería de 5200 mAh almacena unos 19 Wh, de modo que un día despejado basta para una carga completa.' },
@@ -248,12 +249,12 @@ const COPY: Record<Locale, {
     ],
     serviceTitle: 'Envío, devoluciones y garantía',
     serviceItems: [
-      { h: 'Envío', p: 'Envío gratuito en pedidos superiores a 99 €. Las unidades en stock salen del almacén en un día laborable; la entrega en la UE suele tardar de 3 a 5 días laborables.' },
-      { h: 'Devoluciones', p: '30 días para devolver unidades sin usar y en su embalaje original. Los gastos de devolución corren por nuestra cuenta si hay defecto o error en el envío.' },
-      { h: 'Garantía', p: 'Dos años de garantía limitada sobre luminaria, panel solar y batería. Basta con el SKU y el número de pedido impresos en la caja.' },
+      { h: 'Envío', p: 'Los costes de envío, los destinos y los plazos de entrega deben confirmarse con el proveedor real antes de publicar.' },
+      { h: 'Devoluciones', p: 'Las condiciones, los plazos y los gastos de devolución no están verificados para este producto de demostración.' },
+      { h: 'Garantía', p: 'Las condiciones de garantía deben confirmarse para el producto real y el mercado de destino.' },
     ],
     bulkTitle: '¿Compra para un proyecto?',
-    bulkText: 'Para pedidos de varias unidades (administración de fincas, instaladores, distribuidores) ofrecemos precios escalonados, envío consolidado y una sola factura. Indíquenos cantidad y tipo de instalación en el formulario y respondemos con precio y plazo en un día laborable.',
+    bulkText: 'Para proyectos con varias unidades, indique la cantidad y el lugar de instalación en el formulario de demostración. El precio y los plazos deben confirmarse con el proveedor real.',
     footerLinks: [
       { h: 'Producto', items: ['Datos técnicos', 'Guía de instalación', 'Conformidad y certificación'] },
       { h: 'Pedidos', items: ['Solicitar presupuesto', 'Envío y devoluciones', 'Precios para distribuidores'] },
@@ -320,19 +321,25 @@ function mergeCopy(locale: Locale, patch?: CopyPatch) {
 }
 
 export function renderPage(
-  input: JobSpec & { locale: string; facts: AdFact[]; copy?: CopyPatch },
+  input: JobSpec & { locale: string; facts: AdFact[]; copy?: CopyPatch; factGuardLog?: ProductMetricIssue[] },
 ): string {
   const locale = (['en', 'de', 'es'] as const).includes(input.locale as Locale)
     ? (input.locale as Locale) : 'en';
-  const c = mergeCopy(locale, input.copy);
   const facts = input.facts;
+  // Both hardcoded template prose and LLM-generated copy must pass the same source-fact gate.
+  // FAQ data is sanitized BEFORE HTML and JSON-LD are assembled, to keep them consistent.
+  const checked = guardPageCopy(mergeCopy(locale, input.copy), facts, locale);
+  const c = checked.copy;
+  input.factGuardLog?.push(...checked.issues);
   const get = (k: string, fallback = '—') => facts.find((f) => f.label === k)?.value ?? fallback;
   /**
    * 品类回退：title / meta / slug 默认按"太阳能安防灯"写死。
    * 换品类（例如可视门铃）时必须用模型给的标题，否则页面标题与正文打架。
    */
-  const pageTitle = (input.title ?? '').trim() || `${input.brandName} ${get('model')}`;
-  const metaDesc = (input.metaDesc ?? '').trim() || META_BY_LOCALE[locale];
+  const pageTitle = guardPageCopy({ title: (input.title ?? '').trim() || `${input.brandName} ${get('model')}` }, facts, locale).copy.title;
+  const checkedMeta = guardPageCopy({ desc: (input.metaDesc ?? '').trim() || META_BY_LOCALE[locale] }, facts, locale);
+  input.factGuardLog?.push(...checkedMeta.issues.map((x) => ({ ...x, field: 'meta.' + x.field })));
+  const metaDesc = checkedMeta.copy.desc;
   const slug = (input.slug ?? '').trim() || 'product';
 
   /**
@@ -341,7 +348,7 @@ export function renderPage(
    * 而不是在界面上假装打回一次。
    * 生产环境把 DEMO_INJECT_VIOLATION 设为 false 即可。
    */
-  const injectViolation = (process.env.DEMO_INJECT_VIOLATION ?? 'true') === 'true';
+  const injectViolation = (process.env.DEMO_INJECT_VIOLATION ?? 'false') === 'true';
   const VIOLATION: Record<Locale, string> = {
     en: '<p class="draft-warn">The best outdoor light on the market — 100% guaranteed to work.</p>',
     de: '<p class="draft-warn">Unsere umweltfreundlichste Außenleuchte – nachhaltig und klimaneutral.</p>',
@@ -349,7 +356,6 @@ export function renderPage(
   };
   const draftBlock = injectViolation ? VIOLATION[locale] : '';
 
-  const priceCurrency = locale === 'en' ? 'USD' : 'EUR';
   const jsonLdProduct = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -359,35 +365,7 @@ export function renderPage(
     sku: get('sku'),
     mpn: get('sku'),
     category: input.category,
-    offers: {
-      '@type': 'Offer',
-      url: `https://www.${input.domain}/${c.lang}/${slug}`,
-      priceCurrency,
-      price: get('price'),
-      priceValidUntil: '2027-12-31',
-      availability: 'https://schema.org/InStock',
-      itemCondition: 'https://schema.org/NewCondition',
-      seller: { '@type': 'Organization', name: input.brandName },
-      // 电商页必备：退货政策与运费政策会被购物结果与 AI 搜索直接引用
-      hasMerchantReturnPolicy: {
-        '@type': 'MerchantReturnPolicy',
-        applicableCountry: locale === 'en' ? 'US' : 'DE',
-        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-        merchantReturnDays: 30,
-        returnMethod: 'https://schema.org/ReturnByMail',
-        returnFees: 'https://schema.org/FreeReturn',
-      },
-      shippingDetails: {
-        '@type': 'OfferShippingDetails',
-        shippingRate: { '@type': 'MonetaryAmount', value: locale === 'en' ? '0' : '0', currency: priceCurrency },
-        shippingDestination: { '@type': 'DefinedRegion', addressCountry: locale === 'en' ? 'US' : 'EU' },
-        deliveryTime: {
-          '@type': 'ShippingDeliveryTime',
-          handlingTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 2, unitCode: 'DAY' },
-          transitTime: { '@type': 'QuantitativeValue', minValue: 3, maxValue: 5, unitCode: 'DAY' },
-        },
-      },
-    },
+    // Synthetic product has no verified public offer, inventory or seller shipping policy.
     additionalProperty: facts.map((f) => ({ '@type': 'PropertyValue', name: f.label, value: f.value })),
   };
   const jsonLdBreadcrumb = {

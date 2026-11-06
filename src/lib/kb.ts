@@ -1,8 +1,8 @@
 /**
  * 知识库（代码内置）
  * ------------------------------------------------------------
- * 18 条真实可追溯的条目。规模不大，但每条都有出处，
- * 评审更容易验证 —— 这比 2000 条批量生成的内容有说服力。
+ * 18 条内置条目：包含法规参考、模拟案例与虚拟产品假设。部分条目不是外部验证的事实，
+ * 不能将模拟样本或虚拟参数称为真实的运营证据。
  *
  * 不用数据库的理由：数据量在百条量级，代码内加载即可，
  * 零部署依赖，也不受 serverless 无持久化磁盘的限制。
@@ -30,11 +30,11 @@ export const KB_ENTRIES: KBEntry[] = [
   // ============ 规则区（7 条）============
   {
     id: 1, zone: 'rule', market: 'EU', category: CATEGORY,
-    title: 'EU 2023/1670 能效标签要求（照明类）',
-    content: '照明产品投放欧盟市场须贴能效标签，标注能效等级（A–G）与额定功率。页面与包装不得出现无依据的能效优越性宣称。',
-    source: '欧盟官方公报 Regulation (EU) 2023/1670',
-    sourceUrl: 'https://eur-lex.europa.eu/eli/reg/2023/1670/oj',
-    ruleId: 'EU-ENERGY-LABEL', effectiveAt: '2023-09-01', confidence: 5,
+    title: '欧盟光源能效标签适用性核查',
+    content: 'EU 2019/2015 针对适用光源的能效标签；其附录 IV 第 2(c) 项排除特定电池供电光源（包括太阳能花园灯）。必须按实际产品构造核实适用范围，不能默认本演示产品必须贴标。',
+    source: '欧盟委员会授权条例 (EU) 2019/2015',
+    sourceUrl: 'https://eur-lex.europa.eu/eli/reg/2019/2015',
+    ruleId: 'EU-ENERGY-APPLICABILITY', confidence: 5,
   },
   {
     id: 2, zone: 'rule', market: 'US', category: CATEGORY,
@@ -63,14 +63,14 @@ export const KB_ENTRIES: KBEntry[] = [
   {
     id: 5, zone: 'rule', market: 'EU', category: CATEGORY,
     title: 'CE 标识与符合性声明',
-    content: 'CE 标识须附 EU 符合性声明（Declaration of Conformity），并在产品或随附文件中标明制造商与欧盟授权代表信息。',
+    content: '应先确认产品所属指令/法规是否要求 CE 标识，适用时准备对应符合性技术资料与 EU 符合性声明。制造商/进口商等身份及标示责任也需按市场和产品类别核对。',
     source: 'Regulation (EC) No 765/2008（CE 标识规则）',
     ruleId: 'CE-DECLARATION', effectiveAt: '2010-01-01', confidence: 5,
   },
   {
     id: 6, zone: 'rule', market: 'US', category: CATEGORY,
     title: 'FCC Part 15 合规声明',
-    content: '含无线或电子元件的照明产品在美销售须符合 FCC Part 15，并保留检测报告以备查验。',
+    content: 'FCC Part 15 是否适用，需要按实际产品电子结构、辐射/发射类型和市场要求判断；不能一概宣称本虚拟产品已通过 FCC 测试。',
     source: '美国联邦通信委员会 FCC Part 15',
     sourceUrl: 'https://www.fcc.gov/general/rules-regulations-title-47',
     ruleId: 'FCC-PART15', effectiveAt: '2024-01-01', confidence: 4,
@@ -87,20 +87,20 @@ export const KB_ENTRIES: KBEntry[] = [
   {
     id: 8, zone: 'cognition', market: 'US', category: CATEGORY,
     title: '北美用户关注实际续航而非环保属性',
-    content: '北美庭院灯用户最主要顾虑是「冬季能撑几晚」与「下雨会不会坏」，环保属性是次要动因。文案应以续航与防护等级开场。',
-    source: '目标市场用户调研标注（已脱敏）', confidence: 3,
+    content: '演示内容假设：用户可能关注冬季续航、安装和防护等级。应通过真实访谈或运营数据验证排序。',
+    source: '演示性用户需求假设（非真实调研）', confidence: 3,
   },
   {
     id: 9, zone: 'cognition', market: 'DE', category: CATEGORY,
     title: '德语市场：参数表优先于场景故事',
-    content: '德语市场用户习惯先看技术参数再读场景描述。参数缺失会被视为不专业，而不是「精简叙事」。',
-    source: '目标市场用户调研标注（已脱敏）', confidence: 3,
+    content: '演示性内容策略：可将技术参数前置，以便用户理解规格。该市场偏好尚未用真实用户数据验证。',
+    source: '演示性用户需求假设（非真实调研）', confidence: 3,
   },
   {
     id: 10, zone: 'cognition', market: 'ES', category: CATEGORY,
     title: '西语市场：安装便捷性权重高',
-    content: '南欧自建住宅比例高，用户对「无需电工、自己十几分钟能装」敏感度高，安装说明应置于参数表之前或同等位置。',
-    source: '目标市场用户调研标注（已脱敏）', confidence: 3,
+    content: '演示性内容策略：可突出安装步骤，但不得把用户偏好或安装速度描述成经调研证实的结论。',
+    source: '演示性用户需求假设（非真实调研）', confidence: 3,
   },
   {
     id: 11, zone: 'cognition', market: null, category: CATEGORY,
@@ -113,20 +113,20 @@ export const KB_ENTRIES: KBEntry[] = [
   {
     id: 12, zone: 'case', market: 'US', category: CATEGORY,
     title: '「天黑后院子发生了什么你看不见」场景切入',
-    content: '以场景痛点开场而非参数开场。同品类页面询盘率显著高于参数导向版本。好在哪里：命中低语境市场的具体顾虑，且首句即可被引用。',
-    source: '历史高质量样本 · 人工标注', confidence: 4,
+    content: '演示案例：可以用场景痛点开场。未进行真实询盘率实验，不应宣传该策略已经带来转化提升。',
+    source: '演示性案例草案（非真实历史效果）', confidence: 4,
   },
   {
     id: 13, zone: 'case', market: 'DE', category: CATEGORY,
     title: '德语版缺失认证标识导致跳出（反例）',
-    content: '德语产品页若未在首屏可见处标注 CE 与 TÜV 类认证，跳出率明显偏高。好在哪里（反例）：说明合规信息在德语市场是「信任前置项」。',
-    source: '历史运营数据 · 人工标注', confidence: 4,
+    content: '演示反例：不能为了建立信任而添加未经核实的 CE/TÜV 认证；应显示适用性说明和资料核验状态。没有真实跳出率数据。',
+    source: '演示性反例（无真实跳出率数据）', confidence: 4,
   },
   {
     id: 14, zone: 'case', market: 'ES', category: CATEGORY,
     title: '西语版加装「快速自装」流程图',
-    content: '在参数表前插入三步安装图示后，页面停留时长与询盘转化均有提升。好在哪里：把「无需电工」这一抽象卖点变成可视化证据。',
-    source: '历史高质量样本 · 人工标注', confidence: 3,
+    content: '演示案例：考虑增加三步安装图示以解释操作。未实际测量停留时长或询盘转化。',
+    source: '演示性案例草案（非真实历史效果）', confidence: 3,
   },
 
   // ============ 事实区（4 条）============
@@ -139,26 +139,26 @@ export const KB_ENTRIES: KBEntry[] = [
   {
     id: 16, zone: 'fact', market: null, category: CATEGORY,
     title: 'LiFePO4 电池循环寿命与低温衰减',
-    content: '磷酸铁锂常温典型循环约 1500 次（容量保持 80%）。低温衰减明显：-10 °C 下约为标称值的 60–70%。',
-    source: '产品技术手册', confidence: 4,
+    content: '虚拟产品示例参数：循环寿命及低温性能未附第三方报告，不能作真实产品性能保证。',
+    source: '虚拟产品演示参数（未核实）', confidence: 4,
   },
   {
     id: 17, zone: 'fact', market: null, category: CATEGORY,
     title: '太阳能板功率与续航换算',
-    content: '5 W 单晶硅板在日有效光照 4 小时条件下日发电约 20 Wh，可支撑 5200 mAh（约 19 Wh）电池充满。',
-    source: '产品技术手册', confidence: 4,
+    content: '虚拟产品示例：5 W × 4 h = 理想 20 Wh，实际充电还受转换损失、温度与电池标称电压影响；不等于承诺一天充满。',
+    source: '虚拟产品演示参数（未核实）', confidence: 4,
   },
   {
     id: 18, zone: 'fact', market: 'EU', category: CATEGORY,
     title: '能效标签等级划分',
-    content: '照明类产品能效等级按 A–G 划分，A 为最高。标签须同时给出额定功率（W）与年能耗（kWh/1000h）。',
-    source: 'EU 2023/1670 · 附件 III', confidence: 5,
+    content: '对于适用 EU 2019/2015 的光源，能效标签采用 A–G 等级；电池供电产品（如太阳能花园灯）可能按附录 IV 排除，需先核实产品定义和供电结构。',
+    source: 'EU 2019/2015 · 附录 IV（适用性需核实）', confidence: 5,
   },
 ];
 
 /* ============================================================
    市场 → 适用规则域
-   EU 是超集：选欧盟全境必须同时加载成员国法规，
+   EU 模式仅演示 DE/ES 与欧盟级参考资料，不能代表欧盟所有成员国法规，
    否则德国 UWG、西班牙 Ley 3/1991 会被漏掉。
    ============================================================ */
 const MARKET_SCOPE: Record<Market, Market[]> = {

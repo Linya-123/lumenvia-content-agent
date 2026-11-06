@@ -14,6 +14,8 @@
 
 import { randomUUID } from 'node:crypto';
 import type { Readiness, TopicDecision } from './types';
+import type { ProductFactV9 } from './product-profile-v9';
+import type { ClaimRecordV9 } from './claim-engine-v9';
 
 export type StageRecord = {
   stage: number;
@@ -49,6 +51,9 @@ export type JobRecord = {
   pages: PageRecord[];
   /** 各语种结构化文案：续写修订时作为「上一版」喂给模型 */
   copyByLocale?: Record<string, unknown>;
+  profileV9?: ProductFactV9[];
+  claimsV9?: ClaimRecordV9[];
+  missingV9?: ReturnType<typeof import('./product-profile-v9').missingProductInfo>;
   createdAt: number;
   finishedAt: number | null;
 };

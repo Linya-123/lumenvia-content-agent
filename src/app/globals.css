@@ -204,6 +204,108 @@ main { flex: 1; display: flex; overflow: hidden; }
 .ic.ok { color: var(--ok); } .ic.bad { color: var(--err); } .ic.warn { color: var(--warn); }
 .check .detail { color: var(--muted2); font-size: 11.5px; margin-top: 2px; }
 
+/* V9.1 事实审核：沿用原质检页 .check 卡片、色板与字体层级。 */
+.qa-review { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.qa-review-status { align-items: flex-start; margin-bottom: 2px; }
+.qa-review-status-copy, .qa-review-item-copy { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.qa-review-status-copy b, .qa-review-item-copy b { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.qa-review .detail { color: var(--muted2); font-size: 11.5px; line-height: 1.65; margin-top: 3px; }
+.qa-review-section {
+  overflow: hidden; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: 0 1px 2px rgba(24,26,28,.025);
+}
+.qa-review-summary {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 12px 13px; list-style: none; cursor: pointer;
+  color: var(--text); font-family: inherit; user-select: none;
+  transition: background .15s ease;
+}
+.qa-review-summary::-webkit-details-marker { display: none; }
+.qa-review-summary::marker { content: ''; }
+.qa-review-summary:hover { background: var(--panel2); }
+.qa-review-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 9px; }
+.qa-review-summary::before {
+  content: ''; display: block; width: 6px; height: 6px; flex-shrink: 0;
+  border-right: 1.5px solid var(--muted2); border-bottom: 1.5px solid var(--muted2);
+  transform: rotate(-45deg); transition: transform .16s ease;
+}
+.qa-review-section[open] > .qa-review-summary::before { transform: rotate(45deg); }
+.qa-review-section-title { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.5; }
+.qa-review-count {
+  flex-shrink: 0; min-width: 23px; padding: 2px 7px;
+  text-align: center; border-radius: 999px; background: var(--panel2);
+  border: 1px solid var(--border); color: var(--muted); font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.qa-review-section[open] > .qa-review-summary { border-bottom: 1px solid var(--border); }
+.qa-review-body { display: flex; flex-direction: column; }
+.qa-review-item {
+  border: 0; border-radius: 0; padding: 11px 13px;
+  box-shadow: none; background: var(--panel);
+}
+.qa-review-item + .qa-review-item { border-top: 1px solid var(--border); }
+.qa-review-item .ic { flex: 0 0 14px; width: 14px; text-align: center; }
+.qa-review-help, .qa-review-empty {
+  padding: 11px 13px; color: var(--muted2); font-size: 11.5px; line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.qa-review-help { background: var(--panel2); border-bottom: 1px solid var(--border); }
+.qa-review-help + .qa-review-item { border-top: 0; }
+/* V9.1 精简信息架构：两个主面板 + 一个轻量次级入口。 */
+.qa-review-totals { font-variant-numeric: tabular-nums; }
+.qa-review-source-list { border-top: 1px solid var(--border); background: var(--panel2); }
+.qa-review-source-summary {
+  display: flex; align-items: center; gap: 8px; padding: 11px 13px;
+  font-family: inherit; font-size: 11.5px; line-height: 1.6; color: var(--muted);
+  cursor: pointer; list-style: none;
+}
+.qa-review-source-summary::-webkit-details-marker { display: none; }
+.qa-review-source-summary::marker { content: ''; }
+.qa-review-source-summary::before {
+  content: ''; width: 5px; height: 5px; flex: 0 0 5px;
+  border-right: 1.5px solid var(--muted2); border-bottom: 1.5px solid var(--muted2);
+  transform: rotate(-45deg);
+}
+.qa-review-source-list[open] > .qa-review-source-summary::before { transform: rotate(45deg); }
+.qa-review-source-summary:hover, .qa-review-advanced-summary:hover { color: var(--accent); }
+.qa-review-source-summary:focus-visible, .qa-review-advanced-summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px;
+}
+.qa-review-source-body { border-top: 1px solid var(--border); }
+.qa-review-source-item { padding: 10px 13px; background: var(--panel); font-size: 11.5px; overflow-wrap: anywhere; }
+.qa-review-source-item + .qa-review-source-item { border-top: 1px solid var(--border); }
+.qa-review-source-item b { font-size: 11.5px; font-weight: 600; color: var(--text); }
+.qa-review-advanced { border: 0; background: transparent; }
+.qa-review-advanced-summary {
+  display: flex; align-items: center; gap: 8px; padding: 8px 5px;
+  font-family: inherit; font-size: 11.5px; color: var(--muted2);
+  cursor: pointer; list-style: none;
+}
+.qa-review-advanced-summary::-webkit-details-marker { display: none; }
+.qa-review-advanced-summary::marker { content: ''; }
+.qa-review-advanced-summary::before {
+  content: ''; width: 5px; height: 5px; flex: 0 0 5px;
+  border-right: 1.5px solid var(--muted2); border-bottom: 1.5px solid var(--muted2);
+  transform: rotate(-45deg);
+}
+.qa-review-advanced[open] > .qa-review-advanced-summary::before { transform: rotate(45deg); }
+.qa-review-advanced-note { margin-left: auto; font-size: 10.5px; color: var(--muted2); }
+.qa-review-advanced-body {
+  overflow: hidden; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel);
+}
+.qa-review-advanced-intro { padding: 10px 13px; background: var(--panel2); color: var(--muted2); font-size: 11.5px; line-height: 1.6; }
+.qa-review-advanced-intro + .qa-review-item { border-top: 1px solid var(--border); }
+@media (max-width: 460px) {
+  .qa-review-status-copy .detail { line-height: 1.55; }
+  .qa-review-summary { padding: 11px 12px; }
+  .qa-review-section-title { font-size: 12px; }
+  .qa-review-advanced-summary { padding: 8px 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qa-review-summary, .qa-review-summary::before { transition: none; }
+}
+
 /* 产出 */
 .preview-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .lang-tab { padding: 6px 14px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--panel); font-size: 12px; cursor: pointer; color: var(--muted); transition: all .15s; }

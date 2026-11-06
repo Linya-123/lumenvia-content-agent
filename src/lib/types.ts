@@ -1,9 +1,9 @@
 export type Market = 'US' | 'DE' | 'ES' | 'EU';
 export const MARKETS: { id: Market; label: string; locales: string[] }[] = [
-  { id: 'US', label: '北美（US/CA）', locales: ['en'] },
-  { id: 'DE', label: '西欧（DE/FR）', locales: ['de'] },
-  { id: 'ES', label: '南欧（ES/IT）', locales: ['es'] },
-  { id: 'EU', label: '欧盟全境', locales: ['en', 'de', 'es'] },
+  { id: 'US', label: '美国（US）', locales: ['en'] },
+  { id: 'DE', label: '德国（DE）', locales: ['de'] },
+  { id: 'ES', label: '西班牙（ES）', locales: ['es'] },
+  { id: 'EU', label: '三语种比较（US/DE/ES，非欧盟语种示例（EN/DE/ES）认证）', locales: ['en', 'de', 'es'] },
 ];
 
 export type ZoneType = 'rule' | 'cognition' | 'case' | 'fact';
@@ -48,6 +48,8 @@ export type JobSpec = {
   slug: string;
   title: string;
   metaDesc: string;
+  /** Raw customer request; not verified product evidence. */
+  userRequest?: string;
 };
 
 export type Readiness = {
@@ -69,7 +71,10 @@ export type LintViolation = {
 
 export type TopicDecision = {
   topic: string;
-  priority: 'P0' | 'P1' | 'P2';
+  source?: 'uploaded_csv' | 'llm_reasoning' | 'offline_heuristic';
+  focusAreas?: string[];
+  audienceQuestions?: string[];
+  priority: 'P0' | 'P1' | 'P2' | 'N/A';
   reason: string;
   evidence: { label: string; value: string }[];
 };

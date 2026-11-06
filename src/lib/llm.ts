@@ -1,3 +1,5 @@
+import { recordLLMCall, recordLLMFailure, recordLLMUsage } from './llm-metrics';
+
 /**
  * LLM 抽象层
  * ------------------------------------------------------------
@@ -91,11 +93,19 @@ class OpenAICompatibleClient implements LLMClient {
        * 我们只用模型写文案和打合规分，不需要链式推理。
        * 非推理模型会忽略这个字段，因此无条件发送是安全的。
        */
-      enable_thinking: false,
+      // The provider-specific thinking switch is assigned below.
     };
+    // DeepSeek 官方 API 使用 thinking；硅基流动使用 enable_thinking。
+    // 避免给官方接口发送第三方专属字段。
+    if (this.base === 'https://api.deepseek.com' || this.base === 'https://api.deepseek.com/v1') {
+      body.thinking = { type: 'disabled' };
+    } else {
+      body.enable_thinking = false;
+    }
     if (opts.jsonMode) body.response_format = { type: 'json_object' };
 
     const { signal, done } = this.withTimeout(opts.signal);
+    recordLLMCall();
     try {
       const res = await fetch(`${this.base}/chat/completions`, {
         method: 'POST',
@@ -110,9 +120,13 @@ class OpenAICompatibleClient implements LLMClient {
       const data = (await res.json()) as {
         choices?: Array<{ message?: { content?: string | null; reasoning_content?: string } }>;
       };
+      recordLLMUsage((data as typeof data & { usage?: unknown }).usage);
       const msg = data.choices?.[0]?.message;
       // 个别推理模型只回 reasoning_content，正文为空时兜底
       return msg?.content?.trim() || msg?.reasoning_content?.trim() || '';
+    } catch (e) {
+      recordLLMFailure();
+      throw e;
     } finally {
       done();
     }

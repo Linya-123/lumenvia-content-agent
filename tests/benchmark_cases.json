@@ -1,0 +1,182 @@
+[
+  {
+    "id": "en_ce",
+    "locale": "en",
+    "html": "<p>The model is CE certified.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_fcc",
+    "locale": "en",
+    "html": "<p>This item is FCC approved.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_rohs",
+    "locale": "en",
+    "html": "<p>RoHS compliant.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_tuv",
+    "locale": "en",
+    "html": "<p>TÜV verified.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_fcccompliant",
+    "locale": "en",
+    "html": "<p>FCC compliant for US sale.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_cert_ce",
+    "locale": "en",
+    "html": "<p>Certified CE, ready to ship.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_independent",
+    "locale": "en",
+    "html": "<p>Independent test report confirms these results.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_lab",
+    "locale": "en",
+    "html": "<p>Verified by independent laboratory.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "de_ce",
+    "locale": "de",
+    "html": "<p>CE zertifiziert.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "de_konform",
+    "locale": "de",
+    "html": "<p>CE konform.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "de_gepruft",
+    "locale": "de",
+    "html": "<p>FCC geprüft.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "es_cert",
+    "locale": "es",
+    "html": "<p>Producto certificado CE.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "es_ce_cert",
+    "locale": "es",
+    "html": "<p>CE certificado.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_law",
+    "locale": "en",
+    "html": "<p>Lighting EU 2023/1670 energy label.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "de_law",
+    "locale": "de",
+    "html": "<p>EU 2023/1670 Energiekennzeichnung.</p>",
+    "highRisk": true
+  },
+  {
+    "id": "en_jsonld",
+    "locale": "en",
+    "html": "<script type=\"application/ld+json\">{\"description\":\"CE certified\"}</script>",
+    "highRisk": true
+  },
+  {
+    "id": "en_safedisclaimer",
+    "locale": "en",
+    "html": "<p>CE conformity status has not been verified.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_not_cert",
+    "locale": "en",
+    "html": "<p>This is not CE certified.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_never_cert",
+    "locale": "en",
+    "html": "<p>Never FCC approved.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "de_notcert",
+    "locale": "de",
+    "html": "<p>Dieses Gerät ist nicht CE zertifiziert.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "es_notcert",
+    "locale": "es",
+    "html": "<p>Producto no certificado CE.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_no_cert",
+    "locale": "en",
+    "html": "<p>No certification documents are supplied.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_clean",
+    "locale": "en",
+    "html": "<p>Suitable for outdoor installation.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_not_verified",
+    "locale": "en",
+    "html": "<p>No third-party testing has been verified.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_require_review",
+    "locale": "en",
+    "html": "<p>Please review CE applicability.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_lawcorrect",
+    "locale": "en",
+    "html": "<p>Light-source labels may fall under EU 2019/2015.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "de_productlabel",
+    "locale": "de",
+    "html": "<p>Produktdaten müssen geprüft werden.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "es_productlabel",
+    "locale": "es",
+    "html": "<p>Datos por confirmar antes de la publicación.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_css",
+    "locale": "en",
+    "html": "<style>.flag::before{content:\"CE certified\"}</style><p>Neutral product page.</p>",
+    "highRisk": false
+  },
+  {
+    "id": "en_js",
+    "locale": "en",
+    "html": "<script>console.log(\"FCC approved\")</script><p>Neutral product page.</p>",
+    "highRisk": false
+  }
+]

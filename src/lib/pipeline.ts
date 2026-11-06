@@ -2,9 +2,17 @@ import { retrieveExact, retrieveSemantic } from './kb';
 import { lintPage, extractText } from './lint';
 import { computeReadiness, semanticJudge } from './readiness';
 import { renderPage } from './render';
-import { toDecision } from './analytics';
+import { renderSparseV9 } from './render-v9';
+import type { ProductFactV9 } from './product-profile-v9';
+import type { ClaimRecordV9 } from './claim-engine-v9';
+import type { EditorialDecisionV91 } from './content-select-v91';
+import { dynamicTopicDecision } from './topic-planner-v92';
 import { generateOutline, generateCopy, type OutlineResult, type CopyResult } from './generate';
+import type {PageDesignPlan} from './design-planner-v95';
 import type { ExampleSpec, LocaleCopy } from './examples';
+import type { EvidenceDocument } from './evidence';
+import { type ProductMetricIssue } from './fact-guard';
+import type { MarketRow } from './market-data';
 import type {
   Citation, JobSpec, LintViolation, Market, TopicDecision,
 } from './types';
@@ -22,7 +30,7 @@ export type StageResult = {
   citations?: Citation[];
 };
 
-export type AdFact = { label: string; value: string };
+export type AdFact = { label: string; value: string; sourceId?: string };
 
 /* ============================================================
    S1 · 规则加载（精确召回）
@@ -33,7 +41,7 @@ export async function stage1Rules(market: Market, category: string): Promise<Sta
     ruleId: h.ruleId, title: h.title, source: h.source, zone: h.zone,
   }));
   return {
-    summary: `已加载 ${hits.length} 条硬约束`,
+    summary: hits.length ? `已加载 ${hits.length} 条品类参考规则` : '暂无品类专属规则 · 启用通用风险筛查',
     detail: {
       byMarket: market,
       rules: hits.map((h) => ({
@@ -48,13 +56,13 @@ export async function stage1Rules(market: Market, category: string): Promise<Sta
    S2 · 选题定档（数据驱动）
    ============================================================ */
 export async function stage2Topic(
-  market: Market, category: string,
+  spec: JobSpec, marketRows?: MarketRow[], facts: AdFact[] = [],
 ): Promise<StageResult & { decision: TopicDecision }> {
-  const decision = toDecision(market, category);
+  const decision = await dynamicTopicDecision(spec, marketRows, facts.map(f=>({label:f.label,value:f.value})));
   return {
-    summary: `缺口优先级 ${decision.priority}`,
-    detail: decision,
-    decision,
+    summary: decision.source === 'uploaded_csv' ? `CSV 主题分析 · ${decision.priority}` :
+      decision.source === 'llm_reasoning' ? '动态内容规划 · 模型建议' : '动态内容规划 · 离线建议',
+    detail: decision, decision,
   };
 }
 
@@ -65,8 +73,10 @@ export async function stage3Outline(
   spec: JobSpec,
   rules: Array<{ ruleId?: string; title: string }> = [],
   cached?: ExampleSpec['outline'],
+  decision?: TopicDecision,
+  factCount = 0,
 ): Promise<StageResult & { outline: OutlineResult }> {
-  const outline = await generateOutline(spec, rules, cached);
+  const outline = await generateOutline(spec, rules, cached, decision, factCount);
 
   const cases = retrieveSemantic({
     zones: ['case'], market: spec.market, category: spec.category,
@@ -81,6 +91,7 @@ export async function stage3Outline(
     summary,
     detail: {
       modules: outline.modules,
+      design: outline.design,
       rationale: outline.rationale,
       caseHints: outline.caseHints,
       source: outline.source,
@@ -101,23 +112,35 @@ export async function stage4Generate(
   facts: AdFact[],
   opts: {
     modules?: string[];
+    design?: PageDesignPlan;
     cachedCopy?: Record<string, LocaleCopy>;
     /** 续写修订：基于上一版文案 + 用户新指令 */
     revision?: { instruction: string; previousByLocale: Record<string, LocaleCopy> };
+    evidenceDocs?: EvidenceDocument[];
+    factsByLocale?: Record<string, AdFact[]>;
+    profileV9?: ProductFactV9[];
+    focusAreas?: string[];
   } = {},
 ): Promise<{
   summary: string;
   pages: Array<{ locale: string; html: string }>;
   sources: Array<{ locale: string; source: CopyResult['source']; error?: string }>;
   copyByLocale: Record<string, LocaleCopy>;
+  factGuard: Array<ProductMetricIssue & { locale: string }>;
+  claimsV9: ClaimRecordV9[];
+  editorialV91: EditorialDecisionV91[];
 }> {
   const modules = opts.modules ?? ALLOWED_MODULES_FALLBACK;
 
   const results = await Promise.all(
     spec.locales.map((locale) =>
       generateCopy({
-        spec, locale, facts, modules,
+        spec, locale, modules,
         cached: opts.cachedCopy?.[locale],
+        facts: opts.factsByLocale?.[locale] ?? facts,
+        evidenceDocs: opts.evidenceDocs,
+        focusAreas: opts.focusAreas,
+        designConcept: opts.design?.concept,
         revision: opts.revision?.previousByLocale[locale]
           ? {
               previous: opts.revision.previousByLocale[locale],
@@ -128,15 +151,25 @@ export async function stage4Generate(
     ),
   );
 
-  const pages = results.map((r) => ({
-    locale: r.locale,
-    html: renderPage({
+  const factGuard: Array<ProductMetricIssue & {locale: string}> = [];
+  const claimsV9: ClaimRecordV9[] = [];
+  const editorialV91: EditorialDecisionV91[] = [];
+  const pages = results.map((r) => {
+    if (opts.profileV9) {
+      const rendered = renderSparseV9({...spec, locale:r.locale, facts:opts.profileV9, copy:r.copy, modules, focusAreas:opts.focusAreas, designPlan:opts.design});
+      claimsV9.push(...rendered.claims);
+      editorialV91.push(...rendered.editorial);
+      return {locale:r.locale, html:rendered.html};
+    }
+    const issues: ProductMetricIssue[] = [];
+    const html = renderPage({
       ...spec,
       locale: r.locale,
       // site = 当前渲染语种，templates 的 title/meta 才能跟着语种走
       site: r.locale,
-      facts,
+      facts: opts.factsByLocale?.[r.locale] ?? facts,
       copy: r.copy,
+      factGuardLog: issues,
       // 模型给了 SEO 标题就用模型的；否则用本语种的模板标题（不是 spec 里那个固定值）
       ...(r.copy.seoTitle
         ? { title: `${r.copy.seoTitle} | ${spec.brandName}` }
@@ -145,8 +178,10 @@ export async function stage4Generate(
           : { title: `${TITLE_BY_LOCALE[r.locale] ?? TITLE_BY_LOCALE.en}` }),
       ...(r.copy.seoDesc ? { metaDesc: r.copy.seoDesc } : {}),
       ...(spec.topic ? { slug: slugify(spec.topic) } : {}),
-    }),
-  }));
+    });
+    factGuard.push(...issues.map(issue => ({ ...issue, locale:r.locale })));
+    return {locale:r.locale, html};
+  });
 
   const sources = results.map((r) => ({
     locale: r.locale, source: r.source, ...(r.error ? { error: r.error } : {}),
@@ -166,6 +201,9 @@ export async function stage4Generate(
     pages,
     sources,
     copyByLocale: Object.fromEntries(results.map((r) => [r.locale, r.copy])),
+    factGuard,
+    claimsV9,
+    editorialV91,
   };
 }
 
@@ -206,8 +244,8 @@ const VIOLATION_REWRITE: Record<string, Record<string, string>> = {
     insuperable: 'con rendimiento verificado',
   },
   'DE-UWG-5': {
-    umweltfreundlichste: 'mit Prüfbericht belegte', umweltfreundlich: 'mit Prüfbericht belegte',
-    klimaneutral: 'mit Nachweis auf Anfrage', nachhaltig: 'langlebig',
+    umweltfreundlichste: 'für den Außenbereich vorgesehene', umweltfreundlich: 'für den Außenbereich vorgesehene',
+    klimaneutral: 'für den Außenbereich geeignet', nachhaltig: 'für den Außenbereich geeignet',
   },
   'GLOBAL-MEDICAL': { cure: 'help with', treats: 'is designed for', heals: 'supports' },
 };
@@ -224,11 +262,7 @@ function rewriteViolation(html: string, matched: string, ruleId: string): string
   if (alt) {
     out = out.replace(re, (_m, before: string, after: string) => `${before}${alt}${after}`);
   }
-  // 替换后如果还残留（例如出现在属性或 JSON-LD 里），退化为直接删词
-  const still = new RegExp(esc, 'gi');
-  if (still.test(out)) {
-    out = out.replace(still, alt || '');
-  }
+  // 若属性或 JSON-LD 中仍含风险文字，交给后续审查和质量门；不得全局修改 HTML。
   // 清理替换造成的多余空白与空标签
   return out
     .replace(/[ \t]{2,}/g, ' ')
@@ -315,9 +349,9 @@ export async function stage6Semantic(
   spec: JobSpec,
   main: { locale: string; html: string },
   rules: string[],
-): Promise<{ summary: string; score: number; issues: string[]; judge: string }> {
+): Promise<{ summary: string; score: number | null; issues: string[]; judge: string }> {
   const r = await semanticJudge({ html: main.html, topic: spec.topic, rules });
-  return { summary: `${r.score} 分`, score: r.score, issues: r.issues, judge: r.judge };
+  return { summary: r.score===null ? '评分未完成 · 需复核' : `${r.score} 分${r.judge==='stub-heuristic'?'（离线规则）':''}`, score: r.score, issues: r.issues, judge: r.judge };
 }
 
 /* ============================================================

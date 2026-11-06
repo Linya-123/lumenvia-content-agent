@@ -107,7 +107,7 @@ export function computeReadiness(params: {
     pass: fd.score >= 60 && cc >= 70 && ec.score >= 80 && cr.score >= 75,
     details: {
       factDensity: [`${fd.facts} 个事实点 / ${fd.words} 词`],
-      citationCoverage: [hasJsonLd ? 'JSON-LD 完整' : '缺少 JSON-LD'],
+      citationCoverage: [hasJsonLd ? '包含 JSON-LD；这只是结构化信息，不代表外部证据已核验' : '缺少 JSON-LD；不能据此推断真实证据数量'],
       entityConsistency: ec.notes,
       crawlability: cr.notes,
     },
@@ -119,7 +119,7 @@ export async function semanticJudge(params: {
   html: string;
   topic: string;
   rules: string[];
-}): Promise<{ score: number; issues: string[]; judge: string }> {
+}): Promise<{ score: number | null; issues: string[]; judge: string }> {
   const llm = getLLM();
   const text = extractText(params.html).slice(0, 6000);
   const prompt = `你是出海营销内容的语义质检判官。评估以下内容，只输出 JSON：
@@ -151,11 +151,11 @@ ${text}`;
     );
     const parsed = JSON.parse(raw) as { score?: number; issues?: string[] };
     return {
-      score: Math.max(0, Math.min(100, Math.round(parsed.score ?? 80))),
+      score: typeof parsed.score === 'number' && Number.isFinite(parsed.score) ? Math.max(0, Math.min(100, Math.round(parsed.score))) : null,
       issues: parsed.issues ?? [],
       judge: llm.name,
     };
   } catch (e) {
-    return { score: 80, issues: [`判官调用失败：${(e as Error).message}`], judge: 'fallback' };
+    return { score: null, issues: [`判官调用失败：${(e as Error).message}`], judge: 'unavailable' };
   }
 }

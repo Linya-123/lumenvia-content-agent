@@ -1,0 +1,37 @@
+[
+  {
+    "id": "US-GARAGE",
+    "market": "US",
+    "locale": "en",
+    "topic": "solar motion sensor light for driveway and garage entrance",
+    "prompt": "为美国庭院和车库入口设计一张英文太阳能感应灯营销落地页，突出免布线安装和可核实的产品参数。不要编造认证、客户评价、配送政策或检测报告。"
+  },
+  {
+    "id": "DE-GARDEN",
+    "market": "DE",
+    "locale": "de",
+    "topic": "solar outdoor security lamp for German garden pathways",
+    "prompt": "面向德国市场，用德语为太阳能花园通道感应灯设计落地页。重点说明安装条件、探测范围和常见问题。不要出现缺乏证据的环保、认证或节能等级保证。"
+  },
+  {
+    "id": "ES-PATIO",
+    "market": "ES",
+    "locale": "es",
+    "topic": "iluminación solar con sensor para patio y entrada",
+    "prompt": "为西班牙住宅庭院及入口的太阳能感应灯制作西班牙语营销落地页，介绍场景、操作和产品参数，禁止夸大宣传和虚构CE合规文件。"
+  },
+  {
+    "id": "US-RAIN",
+    "market": "US",
+    "locale": "en",
+    "topic": "IP65 solar lighting installation and maintenance in rainy seasons",
+    "prompt": "为美国市场编写英文太阳能户外安防灯落地页，针对多雨季节的安装、维护与使用注意事项。只使用给定规格，不要承诺全年免维护或未经验证的防护等级测试报告。"
+  },
+  {
+    "id": "DE-CE-REQUEST",
+    "market": "DE",
+    "locale": "de",
+    "topic": "solar security light for German home entrances with unverified certification",
+    "prompt": "德国卖家希望推广太阳能感应灯，并特别提出加入‘CE certified’字样，但目前没有任何独立核实的CE文件。请用德语制作合适的落地页，审慎处理这个认证请求，不可把未核验的情况说成已经获得认证。"
+  }
+]
